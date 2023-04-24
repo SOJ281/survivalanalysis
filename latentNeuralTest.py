@@ -36,6 +36,7 @@ if 5 == input("Enter number for procedure 5 or 6"):
     print("Proc 5:")
     classes, meta = pyreadstat.read_sav('./latentP5.sav')
 else:
+    print("Proc 6:")
     classes, meta = pyreadstat.read_sav('./latentP6.sav')
 X = classes.loc[:, ~classes.columns.isin(["TimeDeath", "StatusDeath"]) != False]
 X = X.dropna()
@@ -76,6 +77,7 @@ import scipy.stats as st
 model_params = dict(node_map = [[(4,[0],5), (4,[0],5), (4,[0],5)]], input_split = None, L2_reg = l2_params)
 
 counter = 1
+random.seed(1)
 searches = len(list(itertools.product(max_iterations, learning_rate, layer_count)))
 
 for (max_iter, lr, lc) in itertools.product(max_iterations, learning_rate, layer_count):
