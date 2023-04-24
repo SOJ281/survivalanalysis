@@ -52,35 +52,20 @@ def createSharedDataset(data, borrow=True, cast_int=False):
 class CoxRegression(object):
     def __init__(self, input, n_in):
         self.W = theano.shared(value=numpy.zeros((int(n_in),1),dtype=theano.config.floatX), name='W_cox',borrow=True)
-        # b_values = numpy.zeros((1,), dtype=theano.config.floatX)
-        # self.b = theano.shared(value=b_values, name='b_cox', borrow=True) #intercept term is unnecessary
-        
-        ##print("CoxRegression input", input[0].eval())
+
         self.input = input[0] if len(input) == 1 else T.concatenate(input, axis=1)
-        ##print("CoxRegression input", self.input.eval())
-        #self.input = input
-        ##exit(1)
+
 
         self.theta = T.dot(self.input, self.W) # + self.b
         self.theta = T.reshape(self.theta, newshape=[T.shape(self.theta)[0]]) #recast theta as vector
         self.exp_theta = T.exp(self.theta)
         self.params = [self.W] #, self.b]
-        ##print("CoxRegression self.w", self.W.eval())
-        ##print("CoxRegression self.input", self.input.eval())
-        ##print("CoxRegression self.theta", self.theta.eval())
-        ##print("CoxRegression self.exp_theta", self.exp_theta.eval())
-        ##print("CoxRegression self.params", self.params[0].eval())
-        ####exit(1)
+
 
     def negative_log_likelihood(self, R_batch, ystatus_batch):
         return(-T.mean((self.theta - T.log(T.sum(self.exp_theta * R_batch,axis=1))) * ystatus_batch)) #exp_theta * R_batch ~ sum the exp_thetas of the patients with greater time e.g., R(t)
-        #e.g., all columns of product will have same value or zero, then do a rowSum
     
     def evalNewData(self, test_data):
-    	###print("output eval Cox self.W.",self.W, self.W.eval(), self.W.eval().shape)
-    	###print("output eval Cox T.concatenate", T.concatenate(test_data, axis=1), T.concatenate(test_data, axis=1).eval(), T.concatenate(test_data, axis=1).eval().shape)
-    	###print("output eval Cox T.dot", T.dot(T.concatenate(test_data, axis=1), self.W).eval(), T.dot(T.concatenate(test_data, axis=1), self.W).eval().shape)
-        ###exit(1)
         return(T.dot(T.concatenate(test_data, axis=1), self.W)) # + self.b)
         
 #This hidden layer class code is adapted from the multilayer perceptron HL class on deeplearning.net
@@ -88,10 +73,8 @@ class HiddenLayer(object):
     def __init__(self, rng, input, n_samples, map, label, activation=T.tanh):
 
         W = [0] * len(map)
-        #b = [0] * len(map)
         input = numpy.asarray(input)
         input_cat = [0] * len(map)
-        ##print("map", map, len(map))
         for i in xrange(len(map)):
             W_values = numpy.asarray(
                 rng.uniform(
@@ -106,10 +89,7 @@ class HiddenLayer(object):
             #b[i] = theano.shared(value=b_values, name='b_' + str(label) + '_' + str(i), borrow=True)
             input_cat[i] = input[map[i][1][0]] if len(map[i][1]) == 1 else T.concatenate(input[map[i][1]].tolist(), axis=1)
 
-            ###print("W[i]", W[i].eval(), W[i].eval().shape)
-            ###print("b[i]", b[i].eval(), b[i].eval().shape)
-            ###print("input_cati]", input_cat[i].eval(), input_cat[i].eval().shape)
-            ####exit(1)
+
         
         self.W = W
         #self.b = b
@@ -120,37 +100,23 @@ class HiddenLayer(object):
         
         output = [0] * len(self.map)
         for i in xrange(len(self.map)):
-            ###print("HiddenLayer T.dot(self.input_cat[i], self.W[i])", T.dot(self.input_cat[i], self.W[i]).eval())
-            ###print("HiddenLayer self.activation(T.dot(self.input_cat[i], self.W[i]) + self.b[i])", self.activation(T.dot(self.input_cat[i], self.W[i]) + self.b[i]).eval())
-            #output[i] = self.activation(T.dot(self.input_cat[i], self.W[i]) + self.b[i])
             output[i] = self.activation(T.dot(self.input_cat[i], self.W[i]))
-            ###print("output",output[i])
-            ###exit(1)
+
             
         self.output = output
         
         
         
-        #self.params = [self.W, self.b]
         self.params = [self.W]
-        #print("HiddenLayer self.output", self.output[0].eval(), self.output[0].eval().shape)
-        ###print("HiddenLayer self.W", self.W[0].eval(), self.W[0].eval().shape)
-        ###print("HiddenLayer self.map", self.map)
-        ###print("HiddenLayer self.activation", self.activation)
-        ###print("HiddenLayer self.input", self.input[0].eval(), self.input[0].eval().shape)
-        ###print("HiddenLayer self.input_cat", self.input_cat[0].eval(), self.input_cat[0].eval().shape)
-        ###exit(1)
+
         
     def evalNewData(self, test_data):
         test_data = numpy.asarray(test_data)
         output = [0] * len(self.W)
         for i in xrange(len(self.W)):
             input_cat_i = test_data[self.map[i][1][0]] if len(self.map[i][1]) == 1 else T.concatenate(test_data[self.map[i][1]].tolist(), axis=1)
-            #output[i] = self.activation(T.dot(input_cat_i, self.W[i]) + self.b[i])
             output[i] = self.activation(T.dot(input_cat_i, self.W[i]))
 
-        ###print("hidden eval test_data", test_data)
-    	###print("hidden eval output", output)
         return(output)
 
         
@@ -201,15 +167,7 @@ class CoxMlp(object):
            input=self.hidden_list[-1].output, #last element in hidden_list
            n_in=cox_in
         )
-        ###print(self.hidden_list[0].output)
-        ###print(self.hidden_list[0].W)
-        ###print(self.hidden_list)
-        ###print(len(self.node_map))
-        ###print(self.node_map)
-        #fullSet = self.hidden_list[0].output[0]
-        ###print(fullSet)
-        ###print(len(self.hidden_list))
-        ###exit(1)
+
         self.W.append(self.cox_regression.W)
         # self.b.append(self.cox_regression.b)
 
@@ -223,13 +181,6 @@ class CoxMlp(object):
         self.input = input
         
         self.params = self.W# + self.b
-        
-        ###print("CoxMlp_init self.W",self.W, self.W[3].eval())
-        ###print("CoxMlp_init self.b",self.b, self.b[0].eval())
-        ###print("CoxMlp_init self.hidden_list", self.hidden_list)
-        ###print("CoxMlp_init self.W", self.W[0].get_value()*0.)
-        ###print("CoxMlp_init self.params",self.params[0], self.params[0].eval(), self.params[1], self.params[1].eval(), self.params[2], self.params[2].eval())
-        ####exit(1)
         
         
     def predictNewData(self, x_test):
@@ -245,9 +196,6 @@ class CoxMlp(object):
             theta = self.hidden_list[i].evalNewData(theta)
 
         theta = self.cox_regression.evalNewData(theta).eval()
-        ###print("theta",theta,theta.shape)
-        ###print("theta[:,0]",theta[:,0],theta[:,0].shape)
-        ###exit(1)
         return(theta[:,0])
 
 def simpleNetArch(x_train, n_nodes):
@@ -308,12 +256,8 @@ def trainCoxMlp(x_train, ytime_train, ystatus_train, model_params = dict(), sear
     
     rng = numpy.random.RandomState(rand_seed)
     N_train = ytime_train.shape[0] #number of training examples
-    #n_in = x_train.shape[1] #number of features
     
     R_matrix_train = numpy.zeros([N_train, N_train], dtype=int)
-    ###print("trainCoxMlp R_matrix_train", R_matrix_train, type(R_matrix_train))
-    ###print("trainCoxMlp ystatus_train", ystatus_train, type(ystatus_train))
-    ###print("trainCoxMlp N_train", N_train)
     for i in range(N_train):
         for j in range(N_train):
             R_matrix_train[i,j] = ytime_train[j] >= ytime_train[i]
@@ -321,13 +265,6 @@ def trainCoxMlp(x_train, ytime_train, ystatus_train, model_params = dict(), sear
     train_R = createSharedDataset(R_matrix_train)
     train_ystatus = createSharedDataset(ystatus_train, cast_int=False)
     
-    ###print("trainCoxMlp train_R", train_R.eval())
-    ###print("trainCoxMlp train_ystatus", train_ystatus.eval())
-
-
-    ###print("N_train",N_train)
-    ###print("node_map",node_map)
-    ###print("input_split",input_split)
     
     model = CoxMlp(rng = rng, x_train=x_train, n_samples = N_train, node_map = node_map, input_split = input_split)
 
@@ -335,30 +272,14 @@ def trainCoxMlp(x_train, ytime_train, ystatus_train, model_params = dict(), sear
         model.negative_log_likelihood(train_R, train_ystatus)
         + L2_reg * model.L2_sqr
     )
-    ###print("trainCoxMlp cost", cost.eval())
 
     def nesterovUpdate(cost, params, learning_rate, momentum):
-    	##print("NESTEROV")
-        #print("nesterov cost",cost.eval())
-        ##print("nesterov params",params)
         updates = []
         for param in params:
             vel = createSharedDataset(param.get_value()*0.)
-            ##print("nesterov param",param)
-            #print("nesterov param",param, param.eval())
             grad = T.grad(cost=cost, wrt=param)
-            #print("nesterov grad",grad, grad.eval())
-            ###print("nesterov updates.append((vel, momentum*vel-learning_rate*grad))", (vel.eval(), (momentum*vel-learning_rate*grad).eval()))
-            ###print("nesterov (param, param + momentum*momentum*vel - (1+momentum)*learning_rate*grad)", (param.eval(), (param + momentum*momentum*vel - (1+momentum)*learning_rate*grad).eval()))
-            ####exit(1)
-            ######exit(1)
             updates.append((vel, momentum*vel-learning_rate*grad))
             updates.append((param, param + momentum*momentum*vel - (1+momentum)*learning_rate*grad))
-        ###print("nesterov updates",updates)
-        #ttest = theano.shared(value=numpy.zeros((5,1),dtype=theano.config.floatX))
-        #ttest += model.b
-        ##print("ttest grad",T.grad(cost=cost, wrt=model.cox_regression.W).eval())
-        #exit(1)
         return updates
 
         
@@ -443,27 +364,9 @@ def trainCoxMlp(x_train, ytime_train, ystatus_train, model_params = dict(), sear
     ##print ("max_iter",max_iter)
     ##exit(1)
     for iter in xrange(max_iter):
-    	###print("w", model.W)
-        ###print("params", model.params)
-        ###print("params0", model.params[0].eval())
-        ###print("params1before", model.params[1])
-        ###print("params1before", model.params[1].eval())
-        ###print("params3", model.params[3].eval())
-        ###print(updates)
+
         train_model(iter)
-        ###print("w", model.W)
-        ##print("params", model.params)
-        #for i in model.params:
-        #    #print(i, i.eval())
-        ###print("params0", model.params[0].eval())
-        ###print("CoxMlp_init self.params",model.params[0], model.params[0].eval(), model.params[1], model.params[1].eval(), model.params[2], model.params[2].eval())
-        ####exit(1)
-        ###print("params1after", model.params[1].eval())
-        ###print("params3", model.params[3].eval())
-        #if (iter > 3):
-        #    #exit()
-        # if method == "momentum" or method == "gradient":
-        ###print("cost.eval()",cost.eval())
+
         if iter % eval_step == 0:
             cost_iter = cost.eval()
 
@@ -486,12 +389,7 @@ def trainCoxMlp(x_train, ytime_train, ystatus_train, model_params = dict(), sear
             
             if iter >= patience:
                 break
-    #for i in model.params:
-        #print(i, i.eval())
 
-    ##exit(1)
-    ##print (('running time: %f seconds') % (time.time() - start))
-    ##print (('total iterations: %f') % (iter))
     return(model, cost_iter)
 
 
@@ -559,9 +457,6 @@ def crossValidate(x_train, ytime_train, ystatus_train, model_params = dict(),sea
     #cv_folds=cross_validation.KFold(N_train,n_folds=n_folds, shuffle=True, random_state=cv_seed)
     k=0
     for i, (traincv, testcv) in enumerate(cv_folds.split(x_train)):
-    	###print("crossValidate traincv testcv", traincv, testcv)
-        ###print("crossValidate ytime_train", type(ytime_train))
-        ###print("crossValidate ystatus_train", type(ystatus_train))
         x_train_cv = x_train[traincv]
         ytime_train_cv = ytime_train[traincv]
         ystatus_train_cv = ystatus_train[traincv]
@@ -595,10 +490,6 @@ def L2CVSearch(x_train, ytime_train, ystatus_train, model_params = dict(),search
     best_L2s = numpy.zeros([0], dtype="float")
     
     model_params['L2_reg'] = numpy.exp(L2_reg)
-    ##print("search_iters",search_iters)
-    ##print("L2_reg",L2_reg)
-    ##print("L2_range",L2_range)
-    ##print("step_size",step_size)
     cvpl = crossValidate(x_train, ytime_train, ystatus_train, model_params, search_params, cv_params, verbose=verbose)
     cv_likelihoods = numpy.concatenate((cv_likelihoods, [cvpl]), axis=0)
     L2_reg_params = numpy.append(L2_reg_params,L2_reg)
@@ -645,7 +536,8 @@ def L2CVProfile(x_train, ytime_train, ystatus_train, model_params = dict(),searc
     N_train = ytime_train.shape[0]
     
     #cv_likelihoods = numpy.zeros([len(L2_range), n_folds], dtype=float)
-    cv_likelihoods = [0]*n_folds
+    #cv_likelihoods = [0]*n_folds
+    cv_likelihoods = []
     mean_cvpl = numpy.zeros(len(L2_range), dtype="float")
     ##print("cv_likelihoods")
     for i in xrange(len(L2_range)):
@@ -653,7 +545,8 @@ def L2CVProfile(x_train, ytime_train, ystatus_train, model_params = dict(),searc
         ##print("L2CVProfile model_params['L2_reg']",model_params['L2_reg'])
         cvpl = crossValidate(x_train, ytime_train, ystatus_train, model_params, search_params, cv_params, verbose=verbose)
         
-        cv_likelihoods[i] = cvpl
+        #cv_likelihoods[i] = cvpl
+        cv_likelihoods.append(cvpl)
         mean_cvpl[i] = numpy.mean(cvpl)
         ##print(L2_range[i],"model_params['L2_reg']",model_params['L2_reg'], "numpy.mean(cvpl)",numpy.mean(cvpl))
     ###print("cv_likelihoods")
