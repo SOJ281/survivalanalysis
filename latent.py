@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 %matplotlib inline
 
-from sksurv.datasets import load_breast_cancer
 
 from sksurv.linear_model import CoxPHSurvivalAnalysis, CoxnetSurvivalAnalysis
 from sksurv.preprocessing import OneHotEncoder
@@ -26,25 +25,19 @@ set_config(display="text")  # displays text representation of estimators
 
 print("Starting")
 
-#df = read_spss('MG.sav')
 Xs, meta = pyreadstat.read_sav('./MG.sav')
-#ClinicAge, MaleSex, Haemoglobin, Diabetes
-#X = X.loc[:, X.columns != "ClinicAge" and X.columns != "MaleSex" and X.columns != "Haemoglobin" and X.columns != "Diabetes" ]
-#X = Xs.loc[:, Xs.columns != ["ClinicAge", "MaleSex", "Haemoglobin", "Diabetes"] ]
+
 X = Xs.loc[:, ~Xs.columns.isin(["ClinicAge", "MaleSex", "Haemoglobin", "Diabetes", "TimeDeath", "StatusDeath"]) == False]
 X['ClinicAge'] = X['ClinicAge'].div(5)
-#X['ClinicAge'] = X['ClinicAge'].round(0)
-#X['ClinicAge'] = X['ClinicAge']/5
+
 X = X.dropna()
 X.reset_index(drop=True, inplace=True)
 
 
 ypd = Xs.loc[:, ~Xs.columns.isin(["TimeDeath", "StatusDeath"]) == False]
 y = np.empty(dtype=[('X.StatusDeath', bool), ('X.TimeDeath', np.float64)], shape=(len(X.index)))
-#y['X.StatusDeath'] = (X['StatusDeath'] == 1).values
 y['X.StatusDeath'] = X['StatusDeath'].values
 y['X.TimeDeath'] = X['TimeDeath'].values
-#print(type(X))
 print("Participants", len((X).index))
 print("MaleSex", len((X.loc[X['MaleSex'] == 1.0]).index))
 print("StatusDeath", len((X).index)-len((X.loc[X['StatusDeath'] == 1.0]).index))
@@ -55,11 +48,7 @@ print("medianTimeDeath", X['TimeDeath'].median()/365)
 
 del X["StatusDeath"]
 del X["TimeDeath"]
-#del X["DeathDate"]
 
-print("X",X)
-print("X",X.shape)
-print("y",y.shape)
 
 
 
@@ -75,7 +64,7 @@ mixed_data, mixed_descriptor = get_mixed_descriptor(
 
 
 
-procedure = 3
+procedure = input("procedure 2 or 3")
 #bestClass = [1, 2000000]
 bestClass = []
 for c in range(1, 8):
@@ -96,13 +85,10 @@ for x in bestClass:
         
 print("Best class count is ",best)
         
-#model = StepMix(n_components=bestClass[best][0], measurement=mixed_descriptor, verbose=1, max_iter=10000)
 model = StepMix(n_components=best, measurement=mixed_descriptor, verbose=1, max_iter=10000)
 model.fit(mixed_data)
 classProba = model.predict_proba(mixed_data)
 mixed_data['mixed_pred'] = model.predict(mixed_data)
-#print(mixed_data)
-#print(mixed_data['mixed_pred'].value_counts())
 
 columns=[]
 
@@ -112,7 +98,7 @@ for i in range(best):
 #print("columns",columns)
 latentFrame = pd.DataFrame(classProba, columns=columns).round(2)
 
-if (procedure== 2):
+if (procedure == "2"):
     pyreadstat.write_sav(pd.concat([Xt, ypd], axis = 1).dropna(), "latentP2.sav")
     Xt = latentFrame.dropna()
 else:
@@ -120,8 +106,6 @@ else:
     pyreadstat.write_sav(pd.concat([Xt, ypd], axis = 1).dropna(), "latentP3.sav")
     Xt = Xt.dropna()
 
-#print("Xt",Xt.shape)
-#print("y",y.shape)
 
 
     
@@ -132,15 +116,12 @@ from sklearn.model_selection import cross_validate
 from sklearn.model_selection import cross_val_score
 import scipy.stats as st
 start = time.time()
-#X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=0)
 coefficients = {}
 
 cph = CoxPHSurvivalAnalysis()
 cv_resultsa = cross_validate(cph, Xt, y, cv=10)
 print(cv_resultsa)
-print("CI median", np.median(cv_resultsa["test_score"]))
-ciMean = np.mean(cv_resultsa["test_score"])
-print("CI Mean", ciMean, st.t.interval(alpha=0.95, df=len(cv_resultsa["test_score"])-1,loc=ciMean,scale=st.sem(cv_resultsa["test_score"])))
+print("CI median", np.median(cv_resultsa["test_score"]), st.t.interval(confidence=0.95, df=len(cv_resultsa["test_score"])-1,loc=np.median(cv_resultsa["test_score"]),scale=st.sem(cv_resultsa["test_score"])))
 
 cv_results = cross_validate(cph, Xt, y, cv=10, return_estimator=True)
 print(cv_results['estimator'][0].feature_names_in_)
@@ -148,12 +129,13 @@ print("len(cv_results['estimator'])",len(cv_results['estimator']))
 coefficients = []
 for model in cv_results['estimator']:
     coefficients.append(model.coef_.tolist())
-coefficientsMean = np.mean(coefficients, axis=0)
-print("CoeffMean", coefficientsMean, st.t.interval(alpha=0.95, df=len(coefficients)-1,loc=coefficientsMean,scale=st.sem(coefficients)))
+    
+coeffMedian = np.median(coefficients, axis=0)
+print("CoeffMedian", coeffMedian, st.t.interval(confidence=0.95, df=len(coefficients)-1,loc=coeffMedian,scale=st.sem(coefficients)))
 
 hazRatio = np.exp(coefficients)
-hazRatioMean = np.mean(hazRatio, axis=0)
-print("hazard ratio", hazRatioMean, st.t.interval(alpha=0.95, df=len(hazRatio)-1,loc=hazRatioMean,scale=st.sem(hazRatio)))
+hazRatioMedian = np.median(hazRatio, axis=0)
+print("hazard ratio", hazRatioMedian, st.t.interval(confidence=0.95, df=len(hazRatio)-1,loc=hazRatioMedian,scale=st.sem(hazRatio)))
 
 
 end = time.time()
